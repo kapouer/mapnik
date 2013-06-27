@@ -143,6 +143,26 @@ public:
             sy_ = static_cast<double>(height_) / extent_.height();
     }
 
+    inline double offset_x() const
+    {
+        return offset_x_;
+    }
+
+    inline double offset_y() const
+    {
+        return offset_y_;
+    }
+
+    inline void offset_x(double dx)
+    {
+        offset_x_ = dx;
+    }
+
+    inline void offset_y(double dy)
+    {
+        offset_y_ = dy;
+    }
+
     inline int width() const
     {
         return width_;

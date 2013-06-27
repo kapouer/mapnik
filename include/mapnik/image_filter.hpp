@@ -680,6 +680,20 @@ struct filter_visitor : boost::static_visitor<void>
     Src & src_;
 };
 
+struct filter_radius_visitor : boost::static_visitor<int>
+{
+    template <typename T>
+    int operator () (T const& filter)
+    {
+        return 0;
+    }
+
+    int operator () (agg_stack_blur const& op)
+    {
+        return std::max(op.rx,op.ry);
+    }
+};
+
 }}
 
 #endif // MAPNIK_IMAGE_FILTER_HPP

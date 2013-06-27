@@ -156,6 +156,9 @@ private:
     box2d<double> query_extent_;
     gamma_method_e gamma_method_;
     double gamma_;
+    int image_buffer_size_;
+    double offset_x_;
+    double offset_y_;
     void setup(Map const& m);
 };
 }

@@ -82,7 +82,8 @@ agg_renderer<T>::agg_renderer(Map const& m, T & pixmap, double scale_factor, uns
       ras_ptr(new rasterizer),
       query_extent_(),
       gamma_method_(GAMMA_POWER),
-      gamma_(1.0)
+      gamma_(1.0),
+      image_buffer_size_(0)
 {
     setup(m);
 }
@@ -104,7 +105,8 @@ agg_renderer<T>::agg_renderer(Map const& m, request const& req, T & pixmap, doub
       ras_ptr(new rasterizer),
       query_extent_(),
       gamma_method_(GAMMA_POWER),
-      gamma_(1.0)
+      gamma_(1.0),
+      image_buffer_size_(0)
 {
     setup(m);
 }
@@ -127,7 +129,8 @@ agg_renderer<T>::agg_renderer(Map const& m, T & pixmap, boost::shared_ptr<label_
       ras_ptr(new rasterizer),
       query_extent_(),
       gamma_method_(GAMMA_POWER),
-      gamma_(1.0)
+      gamma_(1.0),
+      image_buffer_size_(0)
 {
     setup(m);
 }
@@ -228,6 +231,8 @@ template <typename T>
 void agg_renderer<T>::start_style_processing(feature_type_style const& st)
 {
     MAPNIK_LOG_DEBUG(agg_renderer) << "agg_renderer: Start processing style";
+    offset_x_ = t_.offset_x();
+    offset_y_ = t_.offset_y();
     if (st.comp_op() || st.image_filters().size() > 0 || st.get_opacity() < 1)
     {
         style_level_compositing_ = true;
@@ -239,9 +244,23 @@ void agg_renderer<T>::start_style_processing(feature_type_style const& st)
 
     if (style_level_compositing_)
     {
-        if (!internal_buffer_)
+        mapnik::filter::filter_radius_visitor visitor;
+        BOOST_FOREACH(mapnik::filter::filter_type const& filter_tag, st.image_filters())
         {
-            internal_buffer_ = boost::make_shared<buffer_type>(pixmap_.width(),pixmap_.height());
+            int radius = boost::apply_visitor(visitor, filter_tag);
+            if (radius > image_buffer_size_)
+            {
+                image_buffer_size_ = radius;
+            }
+        }
+        t_.offset_x(offset_x_-image_buffer_size_);
+        t_.offset_y(offset_y_-image_buffer_size_);
+        ras_ptr->clip_box(-image_buffer_size_*2,-image_buffer_size_*2,width_+image_buffer_size_*2,height_+image_buffer_size_*2);
+        unsigned target_width = pixmap_.width()+image_buffer_size_*2;
+        unsigned target_height = pixmap_.height()+image_buffer_size_*2;
+        if (!internal_buffer_ || (internal_buffer_->width() != target_width || internal_buffer_->height() != target_height))
+        {
+            internal_buffer_ = boost::make_shared<buffer_type>(target_width,target_height);
         }
         else
         {
@@ -270,15 +289,19 @@ void agg_renderer<T>::end_style_processing(feature_type_style const& st)
                 boost::apply_visitor(visitor, filter_tag);
             }
         }
-
         if (st.comp_op())
         {
-            composite(pixmap_.data(),current_buffer_->data(), *st.comp_op(), st.get_opacity(), 0, 0, false);
+            composite(pixmap_.data(), current_buffer_->data(), *st.comp_op(), st.get_opacity(), -image_buffer_size_, -image_buffer_size_, false);
         }
         else if (blend_from || st.get_opacity() < 1)
         {
-            composite(pixmap_.data(),current_buffer_->data(), src_over, st.get_opacity(), 0, 0, false);
+            composite(pixmap_.data(), current_buffer_->data(), src_over, st.get_opacity(), -image_buffer_size_, -image_buffer_size_, false);
         }
+        // reset back to defaults
+        t_.offset_x(offset_x_);
+        t_.offset_y(offset_y_);
+        image_buffer_size_ = 0;
+        ras_ptr->clip_box(0,0,width_,height_);
     }
     // apply any 'direct' image filters
     mapnik::filter::filter_visitor<image_32> visitor(pixmap_);
