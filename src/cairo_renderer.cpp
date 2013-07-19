@@ -568,14 +568,14 @@ void render_vector_marker(cairo_context & context, pixel_position const& pos, ma
             }
             if(attr.fill_gradient.get_gradient_type() != NO_GRADIENT)
             {
-                cairo_gradient g(attr.fill_gradient,attr.fill_opacity*opacity);
+                cairo_gradient g(attr.fill_gradient,attr.fill_opacity * attr.opacity * opacity);
 
                 context.set_gradient(g,bbox);
                 context.fill();
             }
             else if(attr.fill_flag)
             {
-                double fill_opacity = attr.fill_opacity * opacity * attr.fill_color.opacity();
+                double fill_opacity = attr.fill_opacity * attr.opacity * opacity * attr.fill_color.opacity();
                 context.set_color(attr.fill_color.r/255.0,attr.fill_color.g/255.0,
                                   attr.fill_color.b/255.0, fill_opacity);
                 context.fill();
@@ -591,13 +591,13 @@ void render_vector_marker(cairo_context & context, pixel_position const& pos, ma
                 context.set_line_cap(line_cap_enum(attr.line_cap));
                 context.set_line_join(line_join_enum(attr.line_join));
                 context.set_miter_limit(attr.miter_limit);
-                cairo_gradient g(attr.stroke_gradient,attr.fill_opacity*opacity);
+                cairo_gradient g(attr.stroke_gradient,attr.fill_opacity * attr.opacity * opacity);
                 context.set_gradient(g,bbox);
                 context.stroke();
             }
             else if (attr.stroke_flag)
             {
-                double stroke_opacity = attr.stroke_opacity * opacity * attr.stroke_color.opacity();
+                double stroke_opacity = attr.stroke_opacity * attr.opacity * opacity * attr.stroke_color.opacity();
                 context.set_color(attr.stroke_color.r/255.0,attr.stroke_color.g/255.0,
                                   attr.stroke_color.b/255.0, stroke_opacity);
                 context.set_line_width(attr.stroke_width);
@@ -1031,7 +1031,7 @@ struct markers_dispatch
                                                                       sym_.get_max_error(),
                                                                       sym_.get_allow_overlap());
             double x, y, angle;
-            while (placement.get_point(x, y, angle))
+            while (placement.get_point(x, y, angle, sym_.get_ignore_placement()))
             {
                 agg::trans_affine matrix = marker_trans_;
                 matrix.rotate(angle);
@@ -1119,7 +1119,7 @@ struct markers_dispatch_2
                                                                       sym_.get_max_error(),
                                                                       sym_.get_allow_overlap());
             double x, y, angle;
-            while (placement.get_point(x, y, angle))
+            while (placement.get_point(x, y, angle, sym_.get_ignore_placement()))
             {
                 coord2d center = bbox_.center();
                 agg::trans_affine matrix = agg::trans_affine_translation(-center.x, -center.y);
